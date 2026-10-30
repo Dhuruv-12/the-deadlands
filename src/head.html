@@ -1,0 +1,403 @@
+<title>THE DEADLANDS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Saira+Stencil+One&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas; HUD pinned to corners; menus as left-anchored panels over the live scene. Single dark look by design. */
+:root{
+  --night:#0f0c0a;
+  --ink:#f2e4c8;
+  --ink-dim:#b9a88b;
+  --rust:#d65a28;
+  --blood:#b0161d;
+  --haze:#f2a447;
+  --spore:#b8c25a;
+  --panel:rgba(18,13,10,.84);
+  --line:rgba(242,228,200,.18);
+  --font-display:'Saira Stencil One', Impact, 'Arial Black', sans-serif;
+  --font-ui:'Chakra Petch', 'Segoe UI', Roboto, sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--night);color:var(--ink);font-family:var(--font-ui);}
+canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+button{font-family:var(--font-ui)}
+kbd{font-family:var(--font-ui);font-weight:600;font-size:12px;display:inline-block;min-width:22px;padding:2px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;text-align:center;color:var(--ink);background:rgba(255,255,255,.04)}
+
+/* cinematic layer */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
+#cinevig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 55%,rgba(0,0,0,.55) 100%)}
+#grain{position:absolute;inset:-60px;opacity:.06;background-size:180px 180px;animation:grain .6s steps(5) infinite}
+@keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-30px,20px)}40%{transform:translate(25px,-35px)}60%{transform:translate(-15px,40px)}80%{transform:translate(35px,10px)}100%{transform:translate(0,0)}}
+
+/* ---------- screens ---------- */
+.screen{position:fixed;inset:0;display:flex;align-items:flex-start;z-index:20;
+  background:linear-gradient(90deg,rgba(12,9,7,.94) 0%,rgba(12,9,7,.8) 42%,rgba(12,9,7,.15) 75%,rgba(12,9,7,0) 100%);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px;overflow-y:auto}
+.screen.center{justify-content:center;background:rgba(12,9,7,.72)}
+.panel{width:min(560px,100%);display:flex;flex-direction:column;gap:16px;margin-left:clamp(0px,5vw,72px);margin-block:auto}
+.screen.center .panel{margin-left:0;align-items:center;text-align:center}
+.eyebrow{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--haze);font-weight:600}
+h1.title{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(48px,8vw,90px);line-height:.86;letter-spacing:.01em;color:var(--ink);text-wrap:balance}
+h1.title span{color:var(--rust)}
+h2.big{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(40px,7vw,76px);line-height:.9;text-wrap:balance}
+.lede{margin:0;font-size:16px;line-height:1.55;color:var(--ink-dim);max-width:48ch}
+.route{list-style:none;margin:0;padding:0;display:grid;gap:2px;border-top:1px solid var(--line)}
+.route li{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
+.route .n{font-family:var(--font-display);color:var(--rust);font-size:18px}
+.route .place b{font-weight:600}
+.route .place small{display:block;color:var(--ink-dim);font-size:12px}
+.cover{display:flex;gap:3px;align-items:flex-end}
+.cover i{display:block;width:6px;height:14px;background:var(--line)}
+.cover i.on{background:var(--haze)}
+.route-head{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;font-size:13px;color:var(--ink-dim)}
+.controls div{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+details.enemies{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 0}
+details.enemies summary{cursor:pointer;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--haze);font-weight:600;list-style:none}
+details.enemies summary::-webkit-details-marker{display:none}
+details.enemies summary::after{content:" +";color:var(--ink-dim)}
+details.enemies[open] summary::after{content:" –"}
+.roster{display:grid;gap:8px;margin-top:10px}
+.roster div{display:grid;grid-template-columns:110px 1fr;gap:10px;font-size:13px;line-height:1.4;color:var(--ink-dim)}
+.roster b{font-family:var(--font-display);font-weight:400;font-size:18px;color:var(--ink);line-height:1.1}
+.roster b small{display:block;font-family:var(--font-ui);font-size:11px;color:var(--haze);letter-spacing:.06em}
+.btn{appearance:none;border:0;cursor:pointer;background:var(--rust);color:#1a0d06;font-weight:700;font-size:16px;letter-spacing:.08em;text-transform:uppercase;padding:14px 26px;border-radius:2px;align-self:flex-start;transition:transform .12s, background .12s}
+.screen.center .btn{align-self:center}
+.btn:hover{background:var(--haze);transform:translateY(-1px)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:rgba(255,255,255,.06)}
+.row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.note{margin:0;font-size:13px;color:var(--haze)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);width:min(520px,100%)}
+.stats div{background:var(--panel);padding:12px 8px;display:flex;flex-direction:column;gap:4px}
+.stats b{font-size:24px;font-variant-numeric:tabular-nums;font-weight:600}
+.stats span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.next{border-left:3px solid var(--rust);padding:6px 0 6px 14px;text-align:left;max-width:440px}
+.next p{margin:2px 0 0;color:var(--ink-dim);font-size:14px;line-height:1.5}
+.next strong{font-family:var(--font-display);font-weight:400;font-size:26px}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+.hud-tl{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));left:max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:2px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.hud-tl .loc{font-family:var(--font-display);font-size:30px;line-height:1}
+.hud-tl .sub{font-size:13px;color:var(--ink-dim)}
+.hud-tl .left{margin-top:6px;font-size:15px;font-weight:600;color:var(--haze);font-variant-numeric:tabular-nums}
+.hud-tl .stance{margin-top:4px;font-size:11px;letter-spacing:.2em;color:var(--spore);font-weight:600}
+.hud-bl{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:max(18px,env(safe-area-inset-left,0px));width:min(300px,42vw);display:flex;flex-direction:column;gap:6px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.hp-row{display:flex;align-items:baseline;gap:10px}
+.hp-row .num{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.hp-row .lbl{font-size:11px;letter-spacing:.2em;color:var(--ink-dim)}
+.bar{height:8px;background:rgba(0,0,0,.55);border:1px solid var(--line)}
+.bar > i{display:block;height:100%;width:100%;background:var(--ink);transition:width .15s}
+.bar.hp > i{background:linear-gradient(90deg,var(--blood),var(--rust))}
+.bar.st{height:4px}
+.bar.st > i{background:var(--haze);opacity:.8}
+.hud-br{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));right:max(18px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.wname{font-family:var(--font-display);font-size:28px;line-height:1}
+.ammo{font-size:38px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.ammo small{font-size:18px;color:var(--ink-dim);font-weight:500}
+.ammo.low{color:var(--rust)}
+.slots{display:flex;gap:4px}
+.slot{min-width:58px;padding:5px 7px;border:1px solid var(--line);background:rgba(0,0,0,.5);font-size:11px;line-height:1.2;display:flex;flex-direction:column;gap:1px;text-shadow:none}
+.slot b{font-size:10px;color:var(--ink-dim);font-weight:600}
+.slot.on{border-color:var(--rust);background:rgba(214,90,40,.3)}
+.slot.off{opacity:.32}
+.slot .ic{display:block;height:16px}
+.slot .ic svg{width:18px;height:16px;fill:currentColor}
+.slots{flex-wrap:wrap;justify-content:flex-end;max-width:min(640px,70vw)}
+.qhint{font-size:11px;letter-spacing:.12em;color:var(--ink-dim);text-shadow:0 1px 2px #000}
+.qhint kbd{font-size:10px;padding:1px 5px}
+#cross{position:absolute;left:50%;top:50%;width:0;height:0;transition:opacity .1s}
+#cross i{position:absolute;background:rgba(242,228,200,.92);box-shadow:0 0 2px #000}
+#cross .h{width:8px;height:2px;top:-1px}
+#cross .v{width:2px;height:8px;left:-1px}
+#cross .dot{width:3px;height:3px;left:-1.5px;top:-1.5px;border-radius:50%}
+#hitmark{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;opacity:0}
+#hitmark::before,#hitmark::after{content:"";position:absolute;left:12px;top:0;width:2px;height:26px;background:#fff;transform:rotate(45deg)}
+#hitmark::after{transform:rotate(-45deg)}
+#hitmark.head::before,#hitmark.head::after{background:var(--rust)}
+#hitmark.kill{transform:scale(1.35)}
+#vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(176,22,29,0) 45%,rgba(176,22,29,.85) 100%);opacity:0}
+#lowhp{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 50%,rgba(90,0,0,.6) 100%);opacity:0}
+#sporefx{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(150,170,60,.08) 30%,rgba(120,140,40,.6) 100%);opacity:0}
+.dmgarc{position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;border-top:7px solid rgba(220,30,30,.95);filter:drop-shadow(0 0 6px rgba(255,0,0,.6));opacity:0}
+#toast{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font-weight:600;font-size:16px;padding:6px 14px;background:rgba(0,0,0,.65);border-left:3px solid var(--haze);opacity:0;transition:opacity .25s;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+#tip{position:absolute;left:50%;top:64%;transform:translateX(-50%);width:min(520px,90vw);padding:12px 16px;background:rgba(14,10,8,.82);border-left:3px solid var(--spore);opacity:0;transition:opacity .35s;display:flex;flex-direction:column;gap:4px}
+#tip b{font-family:var(--font-display);font-weight:400;font-size:22px;line-height:1}
+#tip span{font-size:14px;line-height:1.45;color:var(--ink-dim)}
+#banner{position:absolute;left:0;right:0;top:22%;text-align:center;opacity:0;transition:opacity .5s;text-shadow:0 2px 12px rgba(0,0,0,.95);padding-inline:16px}
+#banner .eyebrow{font-size:14px}
+#banner .t{font-family:var(--font-display);font-size:clamp(44px,8vw,88px);line-height:.95}
+#banner .s{font-size:16px;color:var(--ink);margin-top:6px;text-shadow:0 1px 4px #000,0 0 12px rgba(0,0,0,.8)}
+#boss{position:absolute;top:calc(18px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(460px,60vw);text-align:center;font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--haze);text-shadow:0 1px 3px #000}
+#boss small{display:block;font-size:10px;letter-spacing:.2em;color:var(--ink-dim)}
+#boss .bar{margin-top:4px;height:10px}
+#boss .bar > i{background:linear-gradient(90deg,#5a0b0b,var(--blood))}
+#reloadHint{position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);font-size:13px;font-weight:600;letter-spacing:.12em;color:var(--haze);text-shadow:0 1px 3px #000}
+
+/* 2x optical scope */
+#scope{position:absolute;inset:0;opacity:0;--r:min(42vmin,47vh)}
+#scope .lens{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(0,0,0,0) 0,rgba(0,0,0,0) calc(var(--r)*.74),rgba(8,6,4,.45) calc(var(--r)*.94),rgba(0,0,0,.96) calc(var(--r) - 1px),#000 var(--r))}
+#scope .glass{position:absolute;left:50%;top:50%;width:calc(var(--r)*2);height:calc(var(--r)*2);transform:translate(-50%,-50%);border-radius:50%;box-shadow:inset 0 0 0 3px rgba(30,24,18,.95),inset 0 0 60px rgba(0,0,0,.55);background:radial-gradient(circle at 34% 28%,rgba(190,220,255,.10),rgba(190,220,255,0) 34%),radial-gradient(circle at 50% 50%,rgba(120,160,140,.05),rgba(0,0,0,0) 70%)}
+#scope svg{position:absolute;left:50%;top:50%;width:calc(var(--r)*2);height:calc(var(--r)*2);transform:translate(-50%,-50%)}
+#scope .tint{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(0,0,0,0) calc(var(--r)*.98),#000 calc(var(--r)*.99))}
+
+/* ---------- title screen ---------- */
+.title-screen{align-items:center;background:radial-gradient(ellipse 70% 90% at 22% 52%,rgba(6,4,4,.72) 0%,rgba(6,4,4,.35) 55%,rgba(6,4,4,0) 80%),linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 70%,rgba(0,0,0,.6) 100%)}
+.title-wrap{margin-left:clamp(0px,6vw,110px);display:flex;flex-direction:column;gap:20px;max-width:min(1100px,100%);min-width:0;animation:titleIn .9s ease-out both}
+@keyframes titleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.kicker{margin:0;font-size:12px;letter-spacing:.46em;text-transform:uppercase;color:#b9473d;font-weight:600}
+.dl-title{margin:0;display:flex;flex-direction:column;align-items:flex-start;line-height:.8;filter:drop-shadow(0 6px 22px rgba(0,0,0,.85)) drop-shadow(0 0 2px rgba(0,0,0,.9))}
+.dl-title .the{font-family:var(--font-ui);font-weight:600;font-size:clamp(14px,1.7vw,22px);letter-spacing:1.1em;text-transform:uppercase;color:var(--ink-dim);margin:0 0 .45em .2em}
+.dl-title .dead{display:inline-block;width:max-content;max-width:100%;padding-right:.05em;white-space:nowrap;font-family:var(--font-display);font-weight:400;font-size:clamp(46px,9.4vw,158px);letter-spacing:.01em;color:#e7d9bf}
+.dl-title.grunge .dead{background-color:#e7d9bf;background-image:var(--grunge);background-size:cover;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent}
+.rule{width:min(440px,62vw);height:2px;background:linear-gradient(90deg,#8e1218,rgba(142,18,24,0))}
+.menu-list{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.mbtn{appearance:none;background:none;border:0;border-left:2px solid transparent;color:var(--ink-dim);font:600 15px var(--font-ui);letter-spacing:.3em;text-transform:uppercase;padding:11px 20px 11px 16px;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+.mbtn:hover,.mbtn:focus-visible{color:var(--ink);border-left-color:#8e1218;background:linear-gradient(90deg,rgba(142,18,24,.22),rgba(142,18,24,0));outline:none}
+.mbtn.primary{color:var(--ink);font-size:18px}
+.mbtn.sel{color:var(--ink);border-left-color:#a3161d;background:linear-gradient(90deg,rgba(163,22,29,.3),rgba(163,22,29,0))}
+.mbtn.back{font-size:12px;padding:8px 14px;border:1px solid var(--line)}
+.title-foot{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:max(16px,6vw);right:16px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:rgba(242,228,200,.42)}
+/* victory ending: letterboxed cinematic over the live scene, then the final screen */
+.screen.ending{justify-content:center;align-items:center;background:radial-gradient(ellipse 80% 70% at 50% 46%,rgba(8,6,5,.0) 0%,rgba(8,6,5,.0) 40%,rgba(8,6,5,.55) 100%)}
+.ending .lb{position:fixed;left:0;right:0;height:10vh;background:#000;transform:scaleY(0);transition:transform 1.2s cubic-bezier(.2,.7,.2,1);z-index:1}
+.ending .lb-top{top:0;transform-origin:top}.ending .lb-bot{bottom:0;transform-origin:bottom}
+.ending.cine .lb{transform:scaleY(1)}
+.end-wrap{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:0 16px;width:min(760px,100%);align-self:flex-start;margin-top:15vh;transition:transform 1.2s cubic-bezier(.2,.7,.2,1)}
+.ending .rv{opacity:0;transform:translateY(10px);transition:opacity 1.4s ease,transform 1.6s cubic-bezier(.2,.7,.2,1)}
+.ending .rv.on{opacity:1;transform:none}
+.end-msg{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(30px,6.2vw,74px);line-height:.95;letter-spacing:.02em;text-transform:uppercase;color:#efe2c6;text-shadow:0 4px 28px rgba(0,0,0,.85)}
+.end-msg .end-red{color:#c8242b}
+.end-sub{margin:0;font-size:clamp(14px,1.6vw,18px);letter-spacing:.08em;color:var(--ink);font-style:italic;text-shadow:0 2px 12px rgba(0,0,0,.9)}
+.end-brand{display:flex;flex-direction:column;align-items:center;line-height:.8;margin-top:10px;filter:drop-shadow(0 6px 22px rgba(0,0,0,.85))}
+.end-brand .the{font-family:var(--font-ui);font-weight:600;font-size:clamp(11px,1.1vw,14px);letter-spacing:1.1em;text-transform:uppercase;color:var(--ink-dim);margin:0 0 .5em 1.1em}
+.end-brand .dead{font-family:var(--font-display);font-size:clamp(34px,5.2vw,64px);color:#e7d9bf;white-space:nowrap;width:max-content}
+.end-brand.grunge .dead{background-color:#e7d9bf;background-image:var(--grunge);background-size:cover;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent}
+.ending.final .end-wrap{min-height:calc(100vh - 15vh - 7vh)}
+.ending.final .end-stats{margin-top:auto}
+.end-stats{margin-top:8px;background:rgba(242,228,200,.14);opacity:0;transition:opacity .6s ease}
+.end-stats.on{opacity:1}
+.end-stats div{background:rgba(14,10,8,.72);opacity:0;transform:translateY(8px);transition:opacity .7s ease,transform .8s cubic-bezier(.2,.7,.2,1)}
+.end-stats.on div{opacity:1;transform:none}
+.end-stats.on div:nth-child(2){transition-delay:.18s}.end-stats.on div:nth-child(3){transition-delay:.36s}.end-stats.on div:nth-child(4){transition-delay:.54s}
+.end-actions .mbtn:not(.sel):not(:hover){background:rgba(10,8,6,.6);color:var(--ink)}
+.end-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.end-skip{position:fixed;right:clamp(16px,3vw,36px);bottom:calc(10vh + 14px);z-index:3;appearance:none;background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--ink-dim);font:600 12px var(--font-ui);letter-spacing:.2em;text-transform:uppercase;padding:8px 12px;cursor:pointer;transition:opacity .5s,color .15s}
+.end-skip:hover,.end-skip:focus-visible{color:var(--ink);outline:none;border-color:#8e1218}
+.end-skip kbd{font:inherit;opacity:.6;margin-left:6px}
+.ending.final .end-skip{opacity:0;pointer-events:none}
+.ending.quick .rv,.ending.quick .end-stats div{transition-duration:.35s!important;transition-delay:0s!important}
+@media (max-width:640px){.ending .lb{height:7vh}.end-skip{bottom:calc(7vh + 10px)}}
+@media (prefers-reduced-motion:reduce){.ending .rv,.end-stats div,.ending .lb{transition:none}}
+#endCaption{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:41;pointer-events:none;opacity:0;transition:opacity .9s ease;font:500 clamp(14px,1.6vw,20px) var(--font-ui);letter-spacing:.5em;text-transform:uppercase;color:var(--ink-dim)}
+#endCaption.on{opacity:1}
+#fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:40;transition:opacity .45s ease}
+#fade.on{opacity:1}
+#fade.slow{transition:opacity .9s ease}
+.modal{z-index:30;background:rgba(6,4,4,.66);align-items:flex-start}
+.mpanel{width:min(920px,100%);margin-block:auto;background:rgba(14,10,9,.94);border:1px solid var(--line);border-top:2px solid #8e1218;padding:24px clamp(16px,3vw,32px);display:flex;flex-direction:column;gap:16px;text-align:left}
+.mpanel.narrow{width:min(560px,100%)}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mtitle{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(30px,4vw,44px);line-height:1}
+.msub{margin:0 0 8px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#c4574c;font-weight:600}
+.mgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 28px}
+.mgrid section{min-width:0}
+.tips{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px;line-height:1.45;color:var(--ink-dim)}
+.setlist{display:grid;gap:4px}
+.srow{display:grid;grid-template-columns:1fr minmax(0,190px) 48px;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.srow output{font-variant-numeric:tabular-nums;color:var(--ink-dim);text-align:right;font-size:13px}
+.srow input[type=range]{width:100%;accent-color:#a3161d}
+.srow select{background:#1c1512;color:var(--ink);border:1px solid var(--line);padding:6px 8px;font:500 14px var(--font-ui)}
+.srow.chk input{justify-self:start;width:18px;height:18px;accent-color:#a3161d}
+.row.left{justify-content:flex-start}
+@media (max-width:760px){.mgrid{grid-template-columns:1fr}.srow{grid-template-columns:1fr 1fr 40px}}
+@media (prefers-reduced-motion:reduce){.title-wrap{animation:none}#fade{transition:none}}
+@media (max-width:640px){
+  .controls{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hud-tl .loc{font-size:22px}
+  .slot{min-width:44px}
+  .roster div{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.btn,#toast,#banner,#tip{transition:none}#grain{animation:none}}
+</style>
+
+<div id="fade" aria-hidden="true"></div>
+<canvas id="game" aria-label="The Deadlands game view"></canvas>
+<div id="fx"><div id="grain"></div><div id="cinevig"></div></div>
+
+<div id="hud" hidden>
+  <div id="scope">
+    <div class="glass"></div>
+    <svg viewBox="-100 -100 200 200" aria-hidden="true">
+      <g stroke="rgba(255,240,220,.35)" stroke-width="1.4" fill="none">
+        <path d="M-100 0H-6M6 0H100M0 -100V-6M0 6V100"/>
+      </g>
+      <g stroke="#0b0b0b" fill="none">
+        <path stroke-width="0.55" d="M-62 0H-5M5 0H62M0 -62V-5M0 5V62"/>
+        <path stroke-width="2.6" d="M-100 0H-62M62 0H100M0 -100V-62M0 62V100"/>
+        <path stroke-width="0.5" d="M-48 -2V2M-36 -2V2M-24 -2V2M-12 -2V2M12 -2V2M24 -2V2M36 -2V2M48 -2V2M-2 12H2M-2 24H2M-2 36H2M-2 48H2M-3 18H3M-3 30H3"/>
+      </g>
+      <circle r="0.9" fill="#e0301e"/>
+      <circle r="58" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="0.4"/>
+    </svg>
+    <div class="lens"></div>
+    <div class="tint"></div>
+  </div>
+  <div class="hud-tl">
+    <div class="eyebrow" id="hWave">Wave 1 / 5</div>
+    <div class="loc" id="hLoc">T. Nagar</div>
+    <div class="sub" id="hSub">Ranganathan Street</div>
+    <div class="left" id="hLeft">14 infected left</div>
+    <div class="stance" id="hStance" hidden>SNEAKING</div>
+  </div>
+  <div id="boss" hidden><span id="bossName">Raatchasan</span><small id="bossSub">The Big One</small><div class="bar"><i id="bossFill"></i></div></div>
+  <div id="cross"><i class="h" style="left:6px"></i><i class="h" style="left:-14px"></i><i class="v" style="top:6px"></i><i class="v" style="top:-14px"></i><i class="dot" hidden></i></div>
+  <div id="hitmark"></div>
+  <div id="reloadHint" hidden>RELOADING</div>
+  <div id="dmgdir"></div>
+  <div id="sporefx"></div>
+  <div id="lowhp"></div>
+  <div id="vignette"></div>
+  <div id="toast"></div>
+  <div id="tip"><b id="tipT">Kaalan</b><span id="tipS"></span></div>
+  <div id="banner"><div class="eyebrow" id="bnE">Wave 1</div><div class="t" id="bnT">T. Nagar</div><div class="s" id="bnS"></div></div>
+  <div class="hud-bl">
+    <div class="hp-row"><span class="num" id="hHp">100</span><span class="lbl">HEALTH</span></div>
+    <div class="bar hp"><i id="hpFill"></i></div>
+    <div class="bar st"><i id="stFill"></i></div>
+  </div>
+  <div class="hud-br">
+    <div class="wname" id="hWeap">Pistol</div>
+    <div class="ammo" id="hAmmo">12 <small>/ 36</small></div>
+    <div class="slots" id="slots"></div>
+    <div class="qhint"><kbd>F</kbd> Quick melee &nbsp; <kbd>6</kbd> Molotov &nbsp; <kbd>7</kbd> Urundai</div>
+  </div>
+</div>
+
+<div id="menu" class="screen title-screen">
+  <div class="title-wrap">
+    <p class="kicker">Chennai · after the fall</p>
+    <h1 class="dl-title" id="dlTitle"><span class="the">The</span><span class="dead">DEADLANDS</span></h1>
+    <div class="rule" aria-hidden="true"></div>
+    <nav class="menu-list" aria-label="Main menu">
+      <button class="mbtn primary" id="startBtn">Start campaign</button>
+      <button class="mbtn" id="howBtn">How to play</button>
+      <button class="mbtn" id="settingsBtn">Settings</button>
+    </nav>
+    <p class="note" id="touchNote" hidden>This game needs a keyboard and mouse. Open it on a laptop or desktop.</p>
+  </div>
+  <div class="title-foot"><span>5 districts · 5 waves · headphones recommended</span><span id="audioHint"> · click anywhere for sound</span></div>
+</div>
+
+<div id="how" class="screen center modal" hidden>
+  <div class="mpanel" role="dialog" aria-labelledby="howTitle">
+    <div class="mhead"><h2 class="mtitle" id="howTitle">How to play</h2><button class="mbtn back" id="howBack">Back</button></div>
+    <p class="lede">The city fell in one night. Fight from T. Nagar to the ruins of Mamallapuram, one wave per district. Every district has less cover than the last, and the infected get stranger the further you go.</p>
+    <div class="mgrid">
+      <section>
+        <h3 class="msub">Controls</h3>
+        <div class="controls">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move · <kbd>Shift</kbd> Sprint</div>
+          <div><kbd>Mouse</kbd> Aim · <kbd>Click</kbd> Fire</div>
+          <div><kbd>Right-click</kbd> Aim / rifle 2× scope</div>
+          <div><kbd>Shift</kbd> in scope: hold breath</div>
+          <div><kbd>Space</kbd> Jump · <kbd>C</kbd> Sneak</div>
+          <div><kbd>F</kbd> Quick melee (any weapon)</div>
+          <div><kbd>1</kbd>–<kbd>7</kbd> / <kbd>Wheel</kbd> Weapons · <kbd>R</kbd> Reload</div>
+          <div><kbd>6</kbd> Molotov · <kbd>7</kbd> Urundai bomb</div>
+          <div><kbd>Esc</kbd> Pause · <kbd>M</kbd> Mute</div>
+          <div>Walk over rocks, sticks, ammo, medkits and throwables to grab them</div>
+        </div>
+      </section>
+      <section>
+        <h3 class="msub">Route</h3>
+        <div class="route-head"><span>District</span><span>Cover</span></div>
+        <ol class="route" id="route"></ol>
+      </section>
+      <section>
+        <h3 class="msub">The infected</h3>
+        <div class="roster">
+          <div><b>Pinam<small>பிணம் · corpse</small></b><span>The city's dead. Most shamble or limp, some wander until they notice you.</span></div>
+          <div><b>Odi<small>ஓடி · runner</small></b><span>Fresh and fast. Screams when it spots you. Fragile.</span></div>
+          <div><b>Thadiyan<small>தடியன் · the hulk</small></b><span>Big, slow and hard-hitting. Soaks bullets.</span></div>
+          <div><b>Kaalan<small>காளான் · mushroom</small></b><span>Blind, fungus-headed, clicking. Hunts by sound. Sneak with C, distract it with a thrown rock. Deadly up close.</span></div>
+          <div><b>Raatchasan<small>ராட்சசன் · giant</small></b><span>A massive fungal brute. Watch its wind-ups: ground slam, charge, spore bombs, and a shockwave you must jump.</span></div>
+        </div>
+      </section>
+      <section>
+        <h3 class="msub">Survival notes</h3>
+        <ul class="tips">
+          <li>The pistol hits hard and saves ammo. The rifle shreds groups but drains magazines.</li>
+          <li>Headshots do 2.5× damage with guns.</li>
+          <li>From wave 4, standing still too long brings runners in from the sides. Keep moving.</li>
+          <li>Molotovs set a 3 m area on fire. Urundai bombs blow up on impact, so never throw one at your feet.</li>
+          <li>When the Raatchasan charges into a wall it is stunned. That is your window.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="settings" class="screen center modal" hidden>
+  <div class="mpanel narrow" role="dialog" aria-labelledby="setTitle">
+    <div class="mhead"><h2 class="mtitle" id="setTitle">Settings</h2><button class="mbtn back" id="setBack">Back</button></div>
+    <div class="setlist">
+      <label class="srow" for="sSens"><span>Mouse sensitivity</span><input type="range" id="sSens" min="0.3" max="2.5" step="0.05"><output id="oSens"></output></label>
+      <label class="srow" for="sFov"><span>Field of view</span><input type="range" id="sFov" min="65" max="95" step="1"><output id="oFov"></output></label>
+      <label class="srow" for="sVol"><span>Master volume</span><input type="range" id="sVol" min="0" max="100" step="1"><output id="oVol"></output></label>
+      <label class="srow" for="sQual"><span>Graphics quality</span><select id="sQual"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select><output></output></label>
+      <label class="srow chk" for="sInv"><span>Invert mouse Y</span><input type="checkbox" id="sInv"><output></output></label>
+      <label class="srow chk" for="sBob"><span>Head bob</span><input type="checkbox" id="sBob"><output></output></label>
+      <label class="srow chk" for="sGrain"><span>Film grain</span><input type="checkbox" id="sGrain"><output></output></label>
+    </div>
+    <div class="row left"><button class="btn ghost" id="setReset">Reset to defaults</button></div>
+  </div>
+</div>
+
+<div id="pause" class="screen center" hidden>
+  <div class="panel">
+    <p class="eyebrow">Paused</p>
+    <h2 class="big">Catch your breath</h2>
+    <div class="row"><button class="btn" id="resumeBtn">Resume</button><button class="btn ghost" id="restartWaveBtn">Restart wave</button><button class="btn ghost" id="pauseSetBtn">Settings</button><button class="btn ghost" id="quitBtn">Main menu</button></div>
+    <p class="note" id="pauseNote" hidden>Click Resume again to lock the mouse.</p>
+  </div>
+</div>
+
+<div id="inter" class="screen center" hidden>
+  <div class="panel">
+    <p class="eyebrow" id="iEyebrow">Wave 1 cleared</p>
+    <h2 class="big" id="iTitle">T. Nagar is quiet</h2>
+    <div class="stats" id="iStats"></div>
+    <div class="next"><span class="eyebrow">Next</span><br><strong id="iNext">Chennai Central</strong><p id="iNextDesc"></p></div>
+    <p class="note">+35 health and a small ammo resupply before you move.</p>
+    <button class="btn" id="nextBtn">Move out</button>
+  </div>
+</div>
+
+<div id="dead" class="screen center" hidden>
+  <div class="panel">
+    <p class="eyebrow" id="dEyebrow">Wave 1 · T. Nagar</p>
+    <h2 class="big" style="color:var(--blood)" id="dTitle">You got bitten</h2>
+    <div class="stats" id="dStats"></div>
+    <div class="row"><button class="btn" id="retryBtn">Retry this wave</button><button class="btn ghost" id="restartAllBtn">Start over</button></div>
+  </div>
+</div>
+
+<div id="endCaption" aria-live="polite">3 days later</div>
+<div id="win" class="screen ending" hidden>
+  <div class="lb lb-top"></div><div class="lb lb-bot"></div>
+  <div class="end-wrap">
+    <h2 class="end-msg rv" id="endMsg"><span>You survived.</span> <span class="end-red">Chennai didn't.</span></h2>
+    <p class="end-sub rv" id="endSub">“Five waves. One survivor. No way back.”</p>
+    <div class="end-brand rv" id="endBrand"><span class="the">The</span><span class="dead">DEADLANDS</span></div>
+    <div class="stats end-stats" id="wStats"></div>
+    <div class="end-actions rv" id="endActions"><button class="mbtn primary sel" id="againBtn">Play again</button><button class="mbtn" id="endMenuBtn">Main menu</button></div>
+  </div>
+  <button class="end-skip" id="endSkip">Skip <kbd>Esc</kbd></button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
